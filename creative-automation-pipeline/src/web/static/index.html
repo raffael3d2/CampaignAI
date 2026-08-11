@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Campaign AI</title>
+<style>
+  /* ---- Campaign AI theme --------------------------------------------
+     Near-black navy canvas, a glowing cyan frame, and a cyan→purple
+     gradient as the signature accent. Clean, rounded, product-like. */
+  :root {
+    --bg:          #0a0a14;   /* near-black navy */
+    --frame-glow:  #22d3ee;   /* cyan edge light */
+    --card:        #12121f;
+    --card-2:      #161624;
+    --card-edge:   #24243a;
+    --line:        #2a2a42;
+    --ink:         #f4f5fb;
+    --ink-dim:     #9aa0c0;
+    --ink-faint:   #6b7194;
+    --cyan:        #22d3ee;
+    --purple:      #8b5cf6;
+    --violet:      #a855f7;
+    --grad:        linear-gradient(90deg, #22d3ee 0%, #6366f1 50%, #a855f7 100%);
+    --grad-soft:   linear-gradient(135deg, rgba(34,211,238,.16), rgba(168,85,247,.16));
+    --ok:          #34d399;
+    --live:        #fb7185;
+    --warn:        #fbbf24;
+    --signal:      #22d3ee;   /* alias kept for any inline refs */
+    --mono: 'SFMono-Regular', ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background:
+      radial-gradient(1200px 700px at 80% -10%, rgba(139,92,246,.18), transparent 60%),
+      radial-gradient(1000px 600px at -5% 10%, rgba(34,211,238,.14), transparent 55%),
+      var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    min-height: 100vh;
+    padding: 30px 20px 60px;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--cyan); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* The glowing outer frame from the mockup */
+  .wrap {
+    max-width: 1120px; margin: 0 auto;
+    background: linear-gradient(180deg, #0c0c18, #0a0a14);
+    border-radius: 26px;
+    padding: 34px 38px 40px;
+    border: 1.5px solid rgba(34,211,238,.55);
+    box-shadow:
+      0 0 0 1px rgba(10,10,20,.9),
+      0 0 34px rgba(34,211,238,.28),
+      0 0 90px rgba(139,92,246,.14),
+      inset 0 0 40px rgba(15,15,30,.6);
+  }
+
+  header { display:flex; flex-direction:column; align-items:center; margin-bottom: 26px; position: relative; }
+  .brandline { display:flex; align-items:center; gap:12px; }
+  .wordmark { font-size: 40px; font-weight: 800; letter-spacing: -0.5px;
+    background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .wordmark b { font-weight: 800; }
+  .onair { width:9px; height:9px; border-radius:50%; background: var(--ink-faint); box-shadow:0 0 0 0 rgba(34,211,238,.5); }
+  .onair.live { background: var(--cyan); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(34,211,238,.5);} 70%{box-shadow:0 0 0 8px rgba(34,211,238,0);} 100%{box-shadow:0 0 0 0 rgba(34,211,238,0);} }
+  .status { position:absolute; right:0; top:8px; font-family:var(--mono); font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; color: var(--ink-faint); }
+
+  h1.section { font-size: 24px; font-weight: 700; margin-bottom: 20px; letter-spacing:-.2px; }
+
+  /* Generic card */
+  .console, .settings, .builder, .readout, .track, .doneban {
+    background: linear-gradient(180deg, var(--card), var(--card-2));
+    border: 1px solid var(--card-edge);
+    border-radius: 16px;
+  }
+
+  /* ---- Settings panel ---- */
+  .settings { margin-bottom: 20px; overflow: hidden; }
+  .settings-head { display:flex; align-items:center; gap:12px; padding:16px 22px; cursor:pointer; user-select:none; }
+  .settings-head .stitle { font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase;
+    color: var(--cyan); }
+  .settings-head .chev { margin-left:auto; color:var(--ink-faint); transition:transform .2s; }
+  .settings.open .chev { transform: rotate(90deg); }
+  .settings-body { display:none; padding: 6px 22px 22px; gap:16px; grid-template-columns:1fr 1fr; }
+  .settings.open .settings-body { display:grid; }
+  @media (max-width:720px){ .settings-body{ grid-template-columns:1fr; } }
+  .fieldrow.full, .save-row { grid-column: 1 / -1; }
+  .fld { display:block; font-family:var(--mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase;
+    color: var(--ink-dim); margin-bottom:8px; }
+  input, textarea, select {
+    width:100%; background:#0c0c17; color:var(--ink); border:1px solid var(--line);
+    border-radius:11px; padding:12px 14px; font-family:var(--sans); font-size:14px; transition:.15s;
+  }
+  textarea { resize: vertical; }
+  input:focus, textarea:focus, select:focus { outline:none; border-color: var(--cyan);
+    box-shadow: 0 0 0 3px rgba(34,211,238,.12); }
+  input::placeholder, textarea::placeholder { color: var(--ink-faint); }
+  .fieldhint { margin-top:7px; font-family:var(--mono); font-size:10px; color:var(--ink-faint);
+    letter-spacing:.03em; line-height:1.55; }
+  .save-row { display:flex; align-items:center; gap:14px; margin-top:2px; }
+  .setmsg { font-family:var(--mono); font-size:11px; letter-spacing:.04em; }
+  .setmsg.ok { color:var(--ok); } .setmsg.err { color:var(--live); }
+  .pill { font-family:var(--mono); font-size:9px; letter-spacing:.1em; text-transform:uppercase;
+    padding:3px 9px; border-radius:6px; margin-left:8px; }
+  .pill.on { color:#052e2b; background: var(--cyan); }
+  .pill.off { color:var(--ink-faint); background: rgba(154,160,192,.12); }
+
+  /* ---- Buttons ---- */
+  .run {
+    border:none; border-radius:12px; padding:13px 26px; cursor:pointer;
+    font-family:var(--sans); font-size:14px; font-weight:700; letter-spacing:.02em;
+    background: var(--grad); color:#0a0a14; transition:.15s; box-shadow: 0 6px 20px rgba(34,211,238,.22);
+  }
+  .run:hover { filter:brightness(1.08); box-shadow:0 8px 28px rgba(139,92,246,.32); }
+  .run:disabled { opacity:.45; cursor:not-allowed; box-shadow:none; filter:grayscale(.3); }
+  .run.ghost { background:#0c0c17; color:var(--cyan); border:1px solid rgba(34,211,238,.5); box-shadow:none; }
+  .run.ghost:hover { background: rgba(34,211,238,.08); }
+
+  /* ---- Mode segmented toggle ---- */
+  .seg { display:inline-flex; gap:6px; background:#0c0c17; border:1px solid var(--line); border-radius:12px; padding:5px; }
+  .seg button { border:none; background:transparent; color:var(--ink-dim); font-family:var(--sans); font-weight:600;
+    font-size:13px; padding:9px 16px; border-radius:9px; cursor:pointer; transition:.15s; }
+  .seg button.on { background: var(--grad); color:#0a0a14; }
+
+  /* ---- Describe panel ---- */
+  #describe-panel { display:grid; padding:22px; gap:18px; margin-bottom:16px; }
+  .genstat { margin-top:9px; font-family:var(--mono); font-size:11px; letter-spacing:.05em; min-height:15px; }
+  .genstat.working { color:var(--cyan); } .genstat.err { color:var(--live); } .genstat.ok { color:var(--ok); }
+
+  /* ---- Campaign builder (the mockup grid) ---- */
+  .builder { padding: 26px; margin-bottom:16px; }
+  .builder h3 { font-size:15px; font-weight:700; margin: 4px 0 14px; }
+  .cardgrid { display:grid; grid-template-columns: repeat(3, 1fr); gap:18px; margin-bottom:18px; }
+  @media (max-width:860px){ .cardgrid{ grid-template-columns:1fr; } }
+  .slots { display: contents; } /* slots live inside cardgrid now */
+
+  .slot { background:#0e0e1b; border:1px solid var(--card-edge); border-radius:16px; overflow:hidden; display:flex; flex-direction:column; }
+  .slot .slot-head { padding:14px 16px 10px; font-size:15px; font-weight:700; display:flex; align-items:baseline; gap:8px; }
+  .slot .slot-head .tag { font-family:var(--mono); font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); font-weight:400; }
+  .slot .preview { margin:0 16px; height:150px; border-radius:12px; background:#08080f;
+    border:1px dashed var(--line); display:flex; align-items:center; justify-content:center;
+    color:var(--ink-faint); font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-align:center; padding:8px; overflow:hidden; }
+  .slot .preview img { width:100%; height:100%; object-fit:cover; border-radius:11px; }
+  .slot .slot-body { padding:14px 16px 16px; display:flex; flex-direction:column; gap:10px; }
+  .slot select, .slot .desc { font-size:13px; padding:10px 12px; }
+  .slot .btnrow { display:flex; gap:8px; }
+  .slot .minibtn { flex:1; background:#0c0c17; color:var(--ink-dim); border:1px solid var(--line);
+    border-radius:10px; padding:10px 6px; font-family:var(--mono); font-size:10px; letter-spacing:.06em;
+    text-transform:uppercase; cursor:pointer; transition:.15s; }
+  .slot .minibtn:hover { color:var(--ink); border-color: rgba(34,211,238,.5); }
+  .slot .minibtn.gen { color:var(--cyan); border-color: rgba(34,211,238,.35); }
+  .slot .genprompt { display:none; }
+  .slot .genprompt.show { display:flex; flex-direction:column; gap:8px; }
+  .slot .slotmsg { font-family:var(--mono); font-size:10px; min-height:12px; color:var(--ink-faint); letter-spacing:.03em; }
+  .slot .slotmsg.err { color:var(--live); } .slot .slotmsg.ok { color:var(--ok); }
+  .hiddenfile { display:none; }
+
+  /* Brief card sits in the grid as the first cell, spanning nicely on wide screens */
+  .brief-card { background:#0e0e1b; border:1px solid var(--card-edge); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:12px; }
+  .brief-card .cardtitle { font-size:15px; font-weight:700; margin-bottom:2px; }
+  .brief-grid { display:grid; grid-template-columns:1fr; gap:12px; }
+  .brief-grid label { display:block; font-family:var(--mono); font-size:10px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--ink-dim); margin-bottom:6px; }
+  .brief-grid .full { grid-column:1/-1; }
+
+  .builder-run { display:flex; align-items:center; gap:18px; flex-wrap:wrap; margin-top:20px;
+    padding-top:20px; border-top:1px solid var(--line); }
+  #run { flex:1; min-width:220px; font-size:16px; padding:16px; }
+
+  /* Describe / locale run bars */
+  #gen-runbar, .locale-bar { display:grid; grid-template-columns:1fr auto; align-items:center; padding:16px 22px; margin-bottom:16px; gap:16px; }
+  .subtle { font-family:var(--mono); font-size:11px; color:var(--ink-faint); letter-spacing:.05em; }
+
+  /* ---- Results ---- */
+  .readout { padding:22px 26px; margin-bottom:16px; display:none; }
+  .readout.show { display:block; }
+  .readout h2 { font-size:22px; font-weight:800; margin-bottom:10px; }
+  .readout .meta { display:flex; flex-wrap:wrap; gap:18px; font-family:var(--mono); font-size:11px; color:var(--ink-dim); letter-spacing:.05em; margin-bottom:12px; }
+  .readout .meta b { color:var(--ink); }
+  .readout .msgline { font-size:16px; font-style:italic; color:var(--ink); margin-bottom:14px; }
+  .chip { display:inline-block; font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+    padding:5px 11px; border-radius:7px; }
+  .chip.ok { color:#052e2b; background:var(--ok); } .chip.warn { color:#3a2a05; background:var(--warn); }
+
+  .track { padding:22px 26px; min-height:120px; margin-bottom:16px; }
+  .track .empty { color:var(--ink-faint); font-family:var(--mono); font-size:12px; letter-spacing:.06em; text-align:center; padding:30px 0; }
+  .product-block { margin-bottom:28px; }
+  .product-block:last-child { margin-bottom:0; }
+  .product-head { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .product-head .pnum { font-family:var(--mono); font-size:11px; color:var(--ink-faint); }
+  .pname { font-size:16px; font-weight:700; }
+  .ptag { font-family:var(--mono); font-size:9px; letter-spacing:.08em; text-transform:uppercase; padding:3px 9px;
+    border-radius:6px; margin-left:auto; border:1px solid var(--line); color:var(--ink-dim); }
+  .ptag.generated { color:var(--cyan); border-color:rgba(34,211,238,.4); }
+  .ptag.chosen, .ptag.reused, .ptag.cached { color:var(--violet); border-color:rgba(168,85,247,.4); }
+
+  .stages { display:grid; grid-template-columns: 220px 1fr; gap:16px; align-items:start; }
+  @media (max-width:860px){ .stages{ grid-template-columns:1fr; } }
+  .hero-cell { background:#0e0e1b; border:1px solid var(--card-edge); border-radius:12px; overflow:hidden; }
+  .hero-cell .cap { font-family:var(--mono); font-size:9.5px; letter-spacing:.06em; color:var(--cyan);
+    padding:9px 11px; border-bottom:1px solid var(--line); }
+  .hero-cell img { width:100%; display:block; background:#08080f; }
+  .hero-cell .src { padding:9px 11px; font-size:10.5px; color:var(--ink-faint); line-height:1.5; }
+
+  .creatives { display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; }
+  @media (max-width:520px){ .creatives{ grid-template-columns:1fr; } }
+  .frame { background:#0e0e1b; border:1px solid var(--card-edge); border-radius:12px; overflow:hidden; }
+  .frame .ratio { display:flex; justify-content:space-between; align-items:center; padding:8px 11px;
+    font-family:var(--mono); font-size:10px; letter-spacing:.06em; color:var(--ink-dim); border-bottom:1px solid var(--line); }
+  .frame .ratio .dot { width:7px; height:7px; border-radius:50%; background:var(--ink-faint); }
+  .frame .ratio .dot.ok { background:var(--ok); } .frame .ratio .dot.no { background:var(--ink-faint); }
+  .frame .imgwrap img { width:100%; display:block; background:#08080f; }
+  .pending { background:#0c0c17; border:1px dashed var(--line); border-radius:12px; min-height:88px;
+    display:flex; align-items:center; justify-content:center; color:var(--ink-faint);
+    font-family:var(--mono); font-size:10px; letter-spacing:.05em; padding:10px; text-align:center; }
+
+  .flag { font-family:var(--mono); font-size:11px; letter-spacing:.04em; padding:8px 12px; border-radius:9px; display:inline-block; }
+  .flag.ok { color:var(--ok); background:rgba(52,211,153,.1); }
+  .flag.warn { color:var(--warn); background:rgba(251,191,36,.1); }
+
+  .doneban { padding:16px 22px; font-family:var(--mono); font-size:12px; letter-spacing:.05em; color:var(--ok);
+    display:none; border-color: rgba(52,211,153,.4); background: rgba(52,211,153,.06); }
+  .doneban.show { display:block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brandline">
+      <span class="onair" id="onair"></span>
+      <span class="wordmark">Campaign <b>AI</b></span>
+    </div>
+    <span class="status" id="status">Idle</span>
+  </header>
+
+  <!-- Settings panel -->
+  <div class="settings" id="settings">
+    <div class="settings-head" id="settings-head">
+      <span class="stitle">⚙ Setup &amp; keys</span>
+      <span id="settings-status"></span>
+      <span class="chev">▶</span>
+    </div>
+    <div class="settings-body">
+      <div class="fieldrow">
+        <label class="fld" for="cfg-gemini">Gemini API key <span id="pill-gemini" class="pill off">not set</span></label>
+        <input id="cfg-gemini" type="password" placeholder="AIza… (Google Gemini — Nano Banana image generation)" autocomplete="off">
+        <div class="fieldhint">Required. Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>. Powers all image generation (Nano Banana, 2K).</div>
+      </div>
+      <div class="fieldrow">
+        <label class="fld" for="cfg-anthropic">Anthropic API key <span id="pill-anthropic" class="pill off">not set</span></label>
+        <input id="cfg-anthropic" type="password" placeholder="sk-ant-… (for the ‘Describe a campaign’ box)" autocomplete="off">
+        <div class="fieldhint">Optional. From <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>. Only needed for the plain-language prompt box.</div>
+      </div>
+      <div class="fieldrow full">
+        <label class="fld" for="cfg-output">Output folder</label>
+        <input id="cfg-output" type="text" placeholder="Leave blank for ./output — or e.g. C:\Users\you\Dropbox\campaigns" autocomplete="off">
+        <div class="fieldhint" id="output-hint">Where finished creatives are saved. Point it at a Dropbox-synced folder to auto-upload.</div>
+      </div>
+      <div class="save-row">
+        <button class="run" id="cfg-save">Save settings</button>
+        <button class="run ghost" id="cfg-test">⚡ Test connection</button>
+        <span class="setmsg" id="cfg-msg"></span>
+      </div>
+    </div>
+  </div>
+
+  <h1 class="section">Create Campaign</h1>
+
+  <!-- Describe flow removed from UI; hidden stubs keep existing JS happy -->
+  <div id="mode" style="display:none;"><button data-m="saved" class="on"></button></div>
+  <div class="console" id="describe-panel" style="display:none;">
+    <textarea id="prompt" style="display:none;"></textarea>
+    <div id="gen-status" class="genstat" style="display:none;"></div>
+    <button id="gen" style="display:none;"></button>
+  </div>
+
+  <!-- Campaign builder (mockup-style card grid) -->
+  <div class="builder" id="saved-panel">
+    <div class="cardgrid">
+      <!-- 1. Campaign Brief card -->
+      <div class="brief-card">
+        <div class="cardtitle">1 · Campaign Brief</div>
+        <div class="brief-grid">
+          <div><label>Brand / region</label><input id="b-region" type="text" placeholder="e.g. Spain (ES)"></div>
+          <div><label>Campaign message</label><input id="b-message" type="text" placeholder="e.g. Radiant skin, naturally."></div>
+        </div>
+      </div>
+
+      <!-- 2. Person (Select Model) -->
+      <div class="slot" data-slot="person">
+        <div class="slot-head">2 · Model <span class="tag">person reference</span></div>
+        <div class="preview" id="prev-person">no image selected</div>
+        <div class="slot-body">
+          <select class="pick" data-slot="person"><option value="">— pick from folder —</option></select>
+          <input type="text" class="desc" data-slot="person" placeholder="describe: confident woman, natural light">
+          <div class="btnrow">
+            <button class="minibtn up" data-slot="person">⤒ Upload</button>
+            <button class="minibtn gen toggle-gen" data-slot="person">✨ Generate</button>
+          </div>
+          <div class="genprompt" data-slot="person">
+            <input type="text" class="genfield" data-slot="person" placeholder="confident woman smiling, lifestyle portrait">
+            <button class="minibtn gen do-gen" data-slot="person">Generate with Nano Banana</button>
+          </div>
+          <div class="slotmsg" data-slot="person"></div>
+          <input type="file" class="hiddenfile" data-slot="person" accept="image/*">
+        </div>
+      </div>
+
+      <!-- 3. Product (Choose Product) -->
+      <div class="slot" data-slot="product">
+        <div class="slot-head">3 · Product <span class="tag">product reference</span></div>
+        <div class="preview" id="prev-product">no image selected</div>
+        <div class="slot-body">
+          <select class="pick" data-slot="product"><option value="">— pick from folder —</option></select>
+          <input type="text" class="desc" data-slot="product" placeholder="describe: luxury serum bottle on marble">
+          <div class="btnrow">
+            <button class="minibtn up" data-slot="product">⤒ Upload</button>
+            <button class="minibtn gen toggle-gen" data-slot="product">✨ Generate</button>
+          </div>
+          <div class="genprompt" data-slot="product">
+            <input type="text" class="genfield" data-slot="product" placeholder="luxury serum bottle on marble, studio light">
+            <button class="minibtn gen do-gen" data-slot="product">Generate with Nano Banana</button>
+          </div>
+          <div class="slotmsg" data-slot="product"></div>
+          <input type="file" class="hiddenfile" data-slot="product" accept="image/*">
+        </div>
+      </div>
+    </div>
+
+    <!-- Logo (optional third reference) + Audience -->
+    <div class="cardgrid" style="grid-template-columns:1fr 1fr;">
+      <!-- 4. Logo slot -->
+      <div class="slot" data-slot="logo">
+        <div class="slot-head">4 · Logo <span class="tag">brand logo · optional</span></div>
+        <div class="preview" id="prev-logo">no logo uploaded</div>
+        <div class="slot-body">
+          <div class="btnrow">
+            <button class="minibtn up" data-slot="logo" style="flex:1;">⤒ Upload logo</button>
+          </div>
+          <div class="slotmsg" data-slot="logo"></div>
+          <input type="file" class="hiddenfile" data-slot="logo" accept="image/*">
+        </div>
+      </div>
+      <!-- 5. Audience -->
+      <div class="brief-card">
+        <div class="cardtitle">5 · Define Audience</div>
+        <input id="b-audience" type="text" placeholder="e.g. women 25-40, clean beauty">
+      </div>
+    </div>
+
+    <!-- Optional JSON/YAML brief (large) -->
+    <div class="brief-card" style="margin-top:18px;">
+      <div class="cardtitle">6 · Paste a brief <span class="subtle">(JSON / YAML — optional; fills the fields above)</span></div>
+      <textarea id="b-blob" rows="8" placeholder='{
+  "target_region": "Spain (ES)",
+  "target_audience": "women 25-40, clean beauty",
+  "campaign_message": "Radiant skin, naturally."
+}'></textarea>
+    </div>
+
+    <div class="fieldhint" style="margin-top:14px;">On Run, <b>Nano Banana (Gemini)</b> generates a finished ad combining your <i>actual</i> person, product, and (if provided) logo images as references, at 2K — plus a standalone product render. Both appear in the results.</div>
+
+    <div class="builder-run">
+      <button class="run" id="run" disabled>▶ Run Campaign</button>
+      <button class="run ghost" id="clear-cache" style="flex:0;white-space:nowrap;">🗑 Clear cache</button>
+      <span class="setmsg" id="builder-msg"></span>
+    </div>
+  </div>
+
+  <!-- Shared run bar for the describe flow -->
+  <div class="console" id="gen-runbar" style="display:none;">
+    <div>
+      <label class="fld">Image generation</label>
+      <div class="subtle">Nano Banana (Gemini) · 2K</div>
+    </div>
+    <button class="run" id="run-gen" disabled>▶ Run</button>
+  </div>
+
+  <!-- Locale bar -->
+  <div class="console locale-bar">
+    <div>
+      <label class="fld">Message locale</label>
+      <div class="seg" id="loc"><button data-v="" class="on">English</button></div>
+    </div>
+    <div class="subtle" style="max-width:340px;text-align:right;">Watch each stage stream live: brief → hero → 3 aspect ratios → checks.</div>
+  </div>
+
+  <!-- Results -->
+  <div class="readout" id="readout">
+    <h2 id="r-campaign"></h2>
+    <div class="meta" id="r-meta"></div>
+    <div class="msgline" id="r-msg"></div>
+    <div id="r-legal"></div>
+  </div>
+
+  <div class="track" id="track">
+    <div class="empty">— set up your campaign and press Run —</div>
+  </div>
+
+  <div class="doneban" id="doneban"></div>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+
+// ---- Settings panel ----
+const settingsEl = $("#settings");
+$("#settings-head").addEventListener("click", () => settingsEl.classList.toggle("open"));
+
+function renderConfigStatus(c){
+  const gm = $("#pill-gemini"), an = $("#pill-anthropic");
+  gm.className = "pill " + (c.gemini_key_set ? "on" : "off");
+  gm.textContent = c.gemini_key_set ? "set" : "not set";
+  an.className = "pill " + (c.anthropic_key_set ? "on" : "off");
+  an.textContent = c.anthropic_key_set ? "set" : "not set";
+  if (c.gemini_key_set) $("#cfg-gemini").placeholder = "saved: " + c.gemini_key_masked + "  (leave blank to keep)";
+  if (c.anthropic_key_set) $("#cfg-anthropic").placeholder = "saved: " + c.anthropic_key_masked + "  (leave blank to keep)";
+  $("#cfg-output").value = c.output_dir || "";
+  $("#output-hint").innerHTML = "Where finished creatives are saved (blank = <code>" +
+    c.default_output + "</code>). Point it at a Dropbox-synced folder to auto-upload.";
+  // header summary
+  const bits = [];
+  bits.push(c.gemini_key_set ? "Gemini ✓" : "Gemini —");
+  bits.push(c.anthropic_key_set ? "Anthropic ✓" : "Anthropic —");
+  $("#settings-status").innerHTML = '<span class="setmsg" style="color:var(--ink-dim)">' + bits.join("  ·  ") + "</span>";
+  // auto-open on first launch when nothing is configured
+  if (!c.gemini_key_set && !c.anthropic_key_set && !c.output_dir) settingsEl.classList.add("open");
+}
+
+fetch("/api/config").then(r=>r.json()).then(renderConfigStatus).catch(()=>{});
+
+$("#cfg-save").addEventListener("click", async () => {
+  const msg = $("#cfg-msg");
+  msg.className = "setmsg"; msg.textContent = "Saving…";
+  const body = { output_dir: $("#cfg-output").value };
+  // only send tokens if the user typed something (blank = keep existing)
+  const gm = $("#cfg-gemini").value.trim(); if (gm) body.gemini_key = gm;
+  const an = $("#cfg-anthropic").value.trim(); if (an) body.anthropic_key = an;
+  try {
+    const r = await fetch("/api/config", {
+      method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(body)
+    });
+    const c = await r.json();
+    if (!r.ok) throw new Error("save failed");
+    renderConfigStatus(c);
+    $("#cfg-gemini").value = ""; $("#cfg-anthropic").value = "";
+    msg.className = "setmsg ok"; msg.textContent = "✓ Saved";
+    setTimeout(()=>{ msg.textContent=""; }, 2500);
+  } catch(e){
+    msg.className = "setmsg err"; msg.textContent = "✕ Could not save";
+  }
+});
+
+$("#cfg-test").addEventListener("click", async () => {
+  const msg = $("#cfg-msg");
+  // If the user typed a new key, save it first so the test uses it.
+  const gm = $("#cfg-gemini").value.trim();
+  if (gm) {
+    await fetch("/api/config", {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ gemini_key: gm })
+    });
+    $("#cfg-gemini").value = "";
+    fetch("/api/config").then(r=>r.json()).then(renderConfigStatus).catch(()=>{});
+  }
+  msg.className = "setmsg"; msg.textContent = "⚡ Testing Gemini connection… (first call can take a moment)";
+  $("#cfg-test").disabled = true;
+  try {
+    const r = await fetch("/api/test_connection", { method: "POST" });
+    const d = await r.json();
+    msg.className = "setmsg " + (d.ok ? "ok" : "err");
+    msg.textContent = (d.ok ? "✓ " : "✕ ") + d.message;
+  } catch(e){
+    msg.className = "setmsg err"; msg.textContent = "✕ Test request failed";
+  } finally {
+    $("#cfg-test").disabled = false;
+  }
+});
+let provider = "gemini", locale = "";
+
+// ---- Campaign builder ----
+const chosen = { person: null, product: null, logo: null };  // image ids
+
+function setSlotMsg(slot, text, kind){
+  const el = document.querySelector(`.slotmsg[data-slot="${slot}"]`);
+  el.className = "slotmsg" + (kind ? " " + kind : "");
+  el.textContent = text || "";
+}
+function setPreview(slot, thumb){
+  const box = $(`#prev-${slot}`);
+  box.innerHTML = thumb ? `<img src="${thumb}" alt="${slot}">` : (slot + " preview");
+}
+function refreshRunEnabled(){
+  $("#run").disabled = !(chosen.person && chosen.product);
+}
+
+// load folder assets into both pickers
+fetch("/api/assets").then(r=>r.json()).then(list=>{
+  document.querySelectorAll(".pick").forEach(sel=>{
+    list.forEach(a=>{
+      const o=document.createElement("option"); o.value=a.id; o.textContent=a.name; sel.appendChild(o);
+    });
+  });
+}).catch(()=>{});
+
+// pick from folder
+document.querySelectorAll(".pick").forEach(sel=>{
+  sel.addEventListener("change", async ()=>{
+    const slot = sel.dataset.slot, id = sel.value;
+    if (!id){ chosen[slot]=null; setPreview(slot,null); refreshRunEnabled(); return; }
+    try {
+      const d = await (await fetch("/api/asset_image?id="+encodeURIComponent(id))).json();
+      chosen[slot]=id; setPreview(slot, d.thumb); setSlotMsg(slot, "✓ selected from folder", "ok");
+    } catch(e){ setSlotMsg(slot, "couldn't load that image", "err"); }
+    refreshRunEnabled();
+  });
+});
+
+// upload
+document.querySelectorAll(".minibtn.up").forEach(btn=>{
+  btn.addEventListener("click", ()=> document.querySelector(`.hiddenfile[data-slot="${btn.dataset.slot}"]`).click());
+});
+document.querySelectorAll(".hiddenfile").forEach(inp=>{
+  inp.addEventListener("change", async ()=>{
+    const slot = inp.dataset.slot, file = inp.files[0];
+    if (!file) return;
+    setSlotMsg(slot, "uploading…");
+    const fd = new FormData(); fd.append("file", file); fd.append("slot", slot);
+    try {
+      const d = await (await fetch("/api/upload_image", { method:"POST", body: fd })).json();
+      if (d.error) throw new Error(d.error);
+      chosen[slot]=d.id; setPreview(slot, d.thumb); setSlotMsg(slot, "✓ uploaded", "ok");
+    } catch(e){ setSlotMsg(slot, "✕ "+e.message, "err"); }
+    refreshRunEnabled();
+  });
+});
+
+// toggle the AI-generate prompt row
+document.querySelectorAll(".toggle-gen").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelector(`.genprompt[data-slot="${btn.dataset.slot}"]`).classList.toggle("show");
+  });
+});
+// do the AI generation
+document.querySelectorAll(".do-gen").forEach(btn=>{
+  btn.addEventListener("click", async ()=>{
+    const slot = btn.dataset.slot;
+    let prompt = document.querySelector(`.genfield[data-slot="${slot}"]`).value.trim();
+    if (!prompt) prompt = document.querySelector(`.desc[data-slot="${slot}"]`).value.trim();
+    if (!prompt){ setSlotMsg(slot, "describe what to generate first", "err"); return; }
+    setSlotMsg(slot, "✨ generating with Nano Banana…");
+    btn.disabled = true;
+    try {
+      const d = await (await fetch("/api/generate_asset", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ slot, prompt, provider })
+      })).json();
+      if (d.error) throw new Error(d.error);
+      chosen[slot]=d.id; setPreview(slot, d.thumb); setSlotMsg(slot, "✓ generated", "ok");
+    } catch(e){ setSlotMsg(slot, "✕ "+e.message, "err"); }
+    finally { btn.disabled = false; refreshRunEnabled(); }
+  });
+});
+
+function bindSeg(container, cb){
+  container.querySelectorAll("button").forEach(btn => {
+    btn.onclick = () => {
+      container.querySelectorAll("button").forEach(x => x.classList.remove("on"));
+      btn.classList.add("on"); cb(btn.dataset.v);
+    };
+  });
+}
+// Image generation is Gemini-only in this build; no provider toggle.
+
+// ---- mode toggle: describe vs saved ----
+let genToken = null;
+bindSeg($("#mode"), m => {
+  const describe = m === "describe";
+  $("#describe-panel").style.display = describe ? "grid" : "none";
+  $("#gen-runbar").style.display = (describe && genToken) ? "grid" : "none";
+  $("#saved-panel").style.display = describe ? "none" : "block";
+});
+
+// ---- generate brief from prompt ----
+$("#gen").addEventListener("click", async () => {
+  const prompt = $("#prompt").value.trim();
+  const st = $("#gen-status");
+  if (!prompt){ st.className="genstat err"; st.textContent="Enter a description first."; return; }
+  st.className = "genstat working"; st.textContent = "Generating brief with Claude…";
+  $("#gen").disabled = true; $("#run-gen").disabled = true; genToken = null;
+  try {
+    const r = await fetch("/api/generate_brief", {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ prompt })
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || "Generation failed");
+    genToken = data.token;
+    st.className = "genstat ok";
+    st.textContent = `✓ “${data.campaign}” · ${data.products.length} products · ${data.region}`;
+    // reveal run bar + locales for any localized messages the model produced
+    $("#gen-runbar").style.display = "grid";
+    $("#run-gen").disabled = false;
+    setGenLocales(data.locales || []);
+  } catch (e) {
+    st.className = "genstat err"; st.textContent = "✕ " + e.message;
+  } finally { $("#gen").disabled = false; }
+});
+
+function setGenLocales(locales){
+  const box = $("#loc");
+  box.innerHTML = '<button data-v="" class="on">English</button>';
+  locales.filter(l=>l!=="en").forEach(l=>{
+    const b=document.createElement("button"); b.dataset.v=l; b.textContent=l.toUpperCase(); box.appendChild(b);
+  });
+  bindSeg(box, v => locale = v); locale = "";
+}
+
+// ---- shared run driver ----
+let es = null;
+function startRun(url){
+  if (es) es.close();
+  $("#track").innerHTML = "";
+  $("#readout").classList.remove("show");
+  $("#doneban").classList.remove("show");
+  setLive(true, "Running");
+  $("#run").disabled = true; $("#run-gen").disabled = true;
+
+  es = new EventSource(url);
+  es.addEventListener("brief", e => renderBrief(JSON.parse(e.data)));
+  es.addEventListener("legal", e => renderLegal(JSON.parse(e.data)));
+  es.addEventListener("product_start", e => startProduct(JSON.parse(e.data)));
+  es.addEventListener("hero_generating", e => heroGenerating(JSON.parse(e.data)));
+  es.addEventListener("hero_ready", e => heroReady(JSON.parse(e.data)));
+  es.addEventListener("creative", e => addCreative(JSON.parse(e.data)));
+  es.addEventListener("done", e => finish(JSON.parse(e.data)));
+  es.addEventListener("error", e => {
+    let msg = "Stream error"; try { msg = JSON.parse(e.data).message; } catch(_){}
+    setLive(false, "Error"); $("#run").disabled=false; $("#run-gen").disabled=false;
+    $("#track").innerHTML = `<div class="empty" style="color:var(--live)">${msg}</div>`;
+    if (es) es.close();
+  });
+}
+
+$("#clear-cache").addEventListener("click", async () => {
+  const msg = $("#builder-msg");
+  const btn = $("#clear-cache");
+  msg.className = "setmsg"; msg.textContent = "Clearing cache…";
+  btn.disabled = true;
+  try {
+    const r = await fetch("/api/clear_cache", { method: "POST" });
+    const d = await r.json();
+    msg.className = "setmsg " + (d.ok ? "ok" : "err");
+    msg.textContent = (d.ok ? "✓ " : "✕ ") + d.message;
+    setTimeout(()=>{ msg.textContent=""; msg.className="setmsg"; }, 4000);
+  } catch(e){
+    msg.className = "setmsg err"; msg.textContent = "✕ Could not clear cache";
+  } finally { btn.disabled = false; }
+});
+
+$("#run").addEventListener("click", async () => {
+  const msg = $("#builder-msg");
+  if (!(chosen.person && chosen.product)){
+    msg.className="setmsg err"; msg.textContent="Pick or generate both images first."; return;
+  }
+  msg.className="setmsg"; msg.textContent="Building campaign…";
+  try {
+    const r = await fetch("/api/builder_brief", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        target_region: $("#b-region").value,
+        target_audience: $("#b-audience").value,
+        campaign_message: $("#b-message").value,
+        brief_text: $("#b-blob").value,
+        person_image: chosen.person,
+        product_image: chosen.product,
+        logo_image: chosen.logo,
+        person_desc: document.querySelector('.desc[data-slot="person"]').value,
+        product_desc: document.querySelector('.desc[data-slot="product"]').value,
+        campaign_name: "Custom Campaign"
+      })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "Could not build campaign");
+    msg.textContent="";
+    startRun(`/api/run?builder=${encodeURIComponent(d.token)}&provider=${provider}&locale=${encodeURIComponent(locale)}`);
+  } catch(e){
+    msg.className="setmsg err"; msg.textContent="✕ "+e.message;
+  }
+});
+$("#run-gen").addEventListener("click", () => {
+  if (!genToken) return;
+  startRun(`/api/run?token=${encodeURIComponent(genToken)}&provider=${provider}&locale=${encodeURIComponent(locale)}`);
+});
+
+function setLive(on, txt){
+  $("#onair").classList.toggle("live", on);
+  $("#status").textContent = txt;
+}
+
+// ---- renderers ----
+let pIndex = 0;
+function renderBrief(b){
+  pIndex = 0;
+  $("#r-campaign").textContent = b.campaign;
+  $("#r-meta").innerHTML =
+    `<span><b>Region</b> · ${b.region}</span>` +
+    `<span><b>Audience</b> · ${b.audience}</span>` +
+    `<span><b>Locale</b> · ${b.locale}</span>` +
+    `<span><b>Ratios</b> · ${b.ratios.join(" / ")}</span>`;
+  $("#r-msg").textContent = `“${b.message}”`;
+  $("#readout").classList.add("show");
+}
+function renderLegal(l){
+  const el = $("#r-legal");
+  if (l.passed) el.innerHTML = `<div class="flag ok">✓ Legal check clear</div>`;
+  else el.innerHTML = `<div class="flag warn">⚠ Review needed · flagged: ${l.flagged_terms.join(", ")}</div>`;
+}
+function slug(s){ return s.toLowerCase().replace(/[^a-z0-9]+/g,"-"); }
+
+function startProduct(d){
+  pIndex++;
+  const id = slug(d.product);
+  const block = document.createElement("div");
+  block.className = "product-block"; block.id = `p-${id}`;
+  block.innerHTML = `
+    <div class="product-head">
+      <span class="pnum">${String(pIndex).padStart(2,"0")}</span>
+      <span class="pname">${d.product}</span>
+      <span class="ptag" id="tag-${id}">resolving…</span>
+    </div>
+    <div class="stages">
+      <div class="hero-cell" id="hero-${id}">
+        <div class="cap">Hero source</div>
+        <div class="pending" style="min-height:150px">resolving asset</div>
+      </div>
+      <div class="creatives" id="cr-${id}">
+        ${["1x1","9x16","16x9"].map(r=>`<div class="pending" data-r="${r}">${r} · queued</div>`).join("")}
+      </div>
+    </div>`;
+  $("#track").appendChild(block);
+  block.scrollIntoView({block:"nearest"});
+}
+function heroGenerating(d){
+  const id = slug(d.product);
+  const cell = $(`#hero-${id}`);
+  cell.querySelector(".pending").textContent = "generating hero…";
+  setTag(id, "generated", "generating");
+}
+function heroReady(d){
+  const id = slug(d.product);
+  const cell = $(`#hero-${id}`);
+  cell.innerHTML = `
+    <div class="cap">Hero · ${d.source}</div>
+    <img src="${d.thumb}" alt="hero for ${d.product}">
+    <div class="src">${d.detail}</div>`;
+  setTag(id, d.source, d.source);
+}
+function setTag(id, cls, txt){
+  const t = $(`#tag-${id}`);
+  if(!t) return;
+  t.className = `ptag ${cls}`;
+  t.textContent = txt;
+}
+function addCreative(d){
+  const id = slug(d.product);
+  const grid = $(`#cr-${id}`);
+  const ph = grid.querySelector(`.pending[data-r="${d.ratio}"]`);
+  const frame = document.createElement("div");
+  frame.className = "frame";
+  const bc = d.brand_check || {};
+  const dotClass = bc.passed ? "ok" : "no";
+  const bcLabel = bc.checked ? (bc.passed ? "brand ✓" : "brand —") : "no palette";
+  frame.innerHTML = `
+    <div class="ratio"><span>${d.ratio}</span><span class="dot ${dotClass}" title="${bcLabel}"></span></div>
+    <div class="imgwrap"><img src="${d.thumb}" alt="${d.product} ${d.ratio}"></div>`;
+  if (ph) grid.replaceChild(frame, ph); else grid.appendChild(frame);
+}
+function finish(d){
+  setLive(false, "Complete");
+  $("#run").disabled = false;
+  const rg = $("#run-gen"); if (rg) rg.disabled = false;
+  const ban = $("#doneban");
+  ban.innerHTML = `✓ Run complete · creatives written to <b>${d.output_dir}</b>`;
+  ban.classList.add("show");
+  if (es) es.close();
+}
+</script></body>
+</html>

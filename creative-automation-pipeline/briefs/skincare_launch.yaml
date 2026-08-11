@@ -1,0 +1,28 @@
+campaign_name: Summer Glow Launch
+target_region: Spain (ES)
+target_audience: women aged 25-40 interested in clean skincare
+campaign_message: Radiant skin, naturally. Discover your summer glow.
+
+# Optional: locale -> message for the localization bonus (--locale es)
+localized_messages:
+  es: "Piel radiante, con naturalidad. Descubre tu brillo de verano."
+  en: "Radiant skin, naturally. Discover your summer glow."
+
+brand:
+  logo: assets/brand/logo.png
+  colors:
+    - "#0A7E8C"
+    - "#F4B41A"
+
+products:
+  - name: Aura Glow Serum
+    slug: aura_glow
+    image_prompt: >
+      Luxury facial serum glass bottle with dropper on marble surface,
+      soft morning light, fresh botanicals, clean minimal skincare aesthetic
+
+  - name: Pure Hydrate Cream
+    slug: pure_hydrate
+    image_prompt: >
+      Premium moisturizer jar with water droplets, aqua and white palette,
+      dewy fresh hydration, high-end commercial skincare photography

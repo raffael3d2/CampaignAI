@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.DS_Store
+# Generated output is reproducible; keep the repo clean.
+output/
+.studio_config.json
+# Uploaded / AI-generated builder images (runtime scratch, not source).
+assets/_workspace/

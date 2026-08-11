@@ -1,0 +1,11 @@
+pydantic>=2.0
+typer>=0.9
+pyyaml>=6.0
+Pillow>=10.0
+# Web UI (visual step-by-step walkthrough)
+Flask>=3.0
+# Image generation: Google Gemini "Nano Banana" (required — the only provider).
+# Get a free API key at https://aistudio.google.com/apikey
+google-genai>=1.0
+# Optional: only needed for the "describe your campaign" prompt box in the UI
+anthropic>=0.40

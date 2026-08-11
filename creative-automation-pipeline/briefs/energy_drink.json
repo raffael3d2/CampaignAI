@@ -1,0 +1,22 @@
+{
+  "campaign_name": "Peak Fuel Q3",
+  "target_region": "United States (US)",
+  "target_audience": "active young adults 18-30 who work out",
+  "campaign_message": "Guaranteed energy that lasts. Fuel your peak.",
+  "brand": {
+    "logo": "assets/brand/logo.png",
+    "colors": ["#E63946", "#1D3557"]
+  },
+  "products": [
+    {
+      "name": "Peak Fuel Original",
+      "slug": "peak_original",
+      "image_prompt": "Sleek energy drink can, dynamic splash, red and navy palette, gym setting, high energy commercial shot"
+    },
+    {
+      "name": "Peak Fuel Zero",
+      "slug": "peak_zero",
+      "image_prompt": "Matte black energy drink can, cold condensation, minimalist dark background, premium sports beverage photography"
+    }
+  ]
+}
