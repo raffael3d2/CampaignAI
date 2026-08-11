@@ -1,0 +1,2 @@
+# CampaignAI
+Ai campaign generator
