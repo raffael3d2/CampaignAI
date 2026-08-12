@@ -108,6 +108,13 @@ def _thumb(img: Image.Image, max_side: int = 480) -> str:
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
+def _img_to_png_bytes(img: Image.Image) -> bytes:
+    """Serialize a PIL image to PNG bytes (for passing as a Gemini reference)."""
+    buf = io.BytesIO()
+    img.convert("RGBA").save(buf, format="PNG")
+    return buf.getvalue()
+
+
 def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
@@ -532,7 +539,8 @@ def run_stream():
                             except Exception:
                                 pass
                         try:
-                            hero = provider.generate(prompt, refs=ref_bytes or None)
+                            hero = provider.generate(prompt, refs=ref_bytes or None,
+                                                     aspect_ratio="1:1")
                         except Exception as e:
                             yield _sse("error", {
                                 "message": f"Image generation failed for '{product.name}': {e}. "
@@ -550,9 +558,53 @@ def run_stream():
                 "thumb": _thumb(hero),
             })
 
+            # Gemini aspect-ratio strings for native per-ratio rendering.
+            _GEMINI_AR = {"1x1": "1:1", "9x16": "9:16", "16x9": "16:9"}
+
             # --- Stage: composite each aspect ratio ---
+            # For a GENERATED ad, render each ratio natively with Gemini so the
+            # person/product/logo are never cropped: the 1:1 hero is the base,
+            # and 9:16 / 16:9 are re-composed from it (passed as a reference)
+            # with a reframe prompt that extends the scene instead of cropping.
+            ratio_refs = references.get(product.folder, [])
             for ratio_name in ASPECT_RATIOS:
-                creative = build_creative(hero, ratio_name, message, logo_path)
+                base = hero  # default: the hero we already have
+                if source == "generated":
+                    if ratio_name == "1x1":
+                        base = hero  # hero is already the square master
+                    else:
+                        ar = _GEMINI_AR[ratio_name]
+                        orient = "vertical" if ratio_name == "9x16" else "widescreen horizontal"
+                        reframe_prompt = (
+                            f"Reframe this advertising image to a {orient} {ar} composition. "
+                            f"Keep the person, product, and logo fully visible and uncropped; "
+                            f"naturally extend the scene and background to fill the new format. "
+                            f"Preserve the subject's appearance, the product, and the brand style."
+                        )
+                        yield _sse("hero_generating", {
+                            "product": product.name,
+                            "prompt": f"Reframing to {ar} (keeping subject in frame)…",
+                        })
+                        try:
+                            # Pass the 1:1 master as the primary reference, plus
+                            # the original references so identity stays consistent.
+                            reframe_refs = [_img_to_png_bytes(hero)]
+                            for rp in ratio_refs:
+                                try:
+                                    reframe_refs.append(Path(rp).read_bytes())
+                                except Exception:
+                                    pass
+                            base = provider.generate(
+                                reframe_prompt, refs=reframe_refs,
+                                aspect_ratio=ar,
+                            )
+                        except Exception as e:
+                            # If a reframe fails, fall back to the crop so the run
+                            # still completes rather than aborting.
+                            log.warning("Reframe to %s failed (%s); using crop.", ar, e)
+                            base = hero
+
+                creative = build_creative(base, ratio_name, message, logo_path)
                 rel = f"{brief.slug}/{product.folder}/{ratio_name}/creative.jpg"
                 saved = storage.save_image(creative, rel)
                 brand = brand_color_check(saved, brief.brand.colors)

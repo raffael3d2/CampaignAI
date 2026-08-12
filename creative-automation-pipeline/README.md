@@ -43,7 +43,11 @@ For a campaign, the pipeline:
    "Nano Banana", conditioned on any reference images provided (person, product,
    logo).
 2. **Produces creatives** for **1:1 (1080×1080)**, **9:16 (1080×1920)**, and
-   **16:9 (1920×1080)** via subject-aware center-crop (no distortion) + resize.
+   **16:9 (1920×1080)**. For a *generated* hero it renders each ratio
+   **natively** with Nano Banana — the 1:1 is the master, and 9:16/16:9 are
+   re-composed from it (passed back as a reference) so the person, product, and
+   logo are never cropped; the model extends the scene instead. Reused/uploaded
+   heroes use a subject-aware center-crop.
 3. **Overlays the campaign message** (English by default; localizable) with an
    auto-contrast scrim so text stays legible on any hero.
 4. **Stamps the brand logo** on each creative (optional).
@@ -258,6 +262,18 @@ In the builder, "Run Campaign" creates a two-product brief:
 
 Both appear in the results stream, each with its three aspect ratios and checks.
 
+**Multi-ratio rendering (no cut-offs).** A naive pipeline generates one image
+and center-crops it to 9:16 / 16:9 — which slices off faces and logos. Instead,
+for a generated ad this pipeline renders each ratio **natively**: it generates
+the **1:1** master first, then for 9:16 and 16:9 it calls Nano Banana again,
+passing the 1:1 as a reference with a *reframe* prompt ("keep the person,
+product, and logo fully visible; extend the scene to fill the new format").
+Because generation is reference-conditioned, the model recomposes and extends
+the background rather than cropping — so subjects stay in frame at every ratio.
+This costs three image generations per ad (1:1 + two reframes) instead of one;
+that trade is intentional for output quality. If a reframe call fails, the
+pipeline falls back to a crop so the run still completes.
+
 > **Honest note on fidelity.** Reference-conditioned generation is not a
 > pixel-perfect copy — the person, product, and logo are recognizably *based on*
 > your images and styled into the scene, not cut-and-pasted. For a crisp,
@@ -396,9 +412,11 @@ builder images live under `assets/_workspace/` (also gitignored).
 - **Reference fidelity.** Gemini composes the person/product/logo references
   into a new scene; likeness and product/logo detail are strong but not a
   pixel-exact copy of the uploads.
-- **Smart crop is center-weighted**, not saliency/face-aware. A production
-  version would use subject detection to keep the product in frame on extreme
-  ratios like 9:16.
+- **Ratio rendering.** Generated ads are rendered natively per ratio (1:1 master
+  + 9:16/16:9 reframes) so subjects aren't cropped, at the cost of three image
+  generations per ad. Reused/uploaded heroes still use a center-weighted crop,
+  which is not saliency/face-aware; a production version would add subject
+  detection there too.
 - **Brand-color check** samples a downscaled image for palette presence; it's a
   presence heuristic, not a brand-guideline engine.
 - **Legal check** is a keyword scan over a starter prohibited-word list — a
