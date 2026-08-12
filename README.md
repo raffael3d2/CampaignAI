@@ -26,7 +26,7 @@ and logo stay fully in frame at every size.
 
 | 16:9 — widescreen (1920×1080) | 9:16 — vertical (1080×1920) | 1:1 — square (1080×1080) |
 |:---:|:---:|:---:|
-| ![16:9 creative](https://github.com/raffael3d2/CampaignAI/blob/main/docs/examples/creative_16x9.jpg?raw=true) | ![9:16 creative](https://github.com/raffael3d2/CampaignAI/blob/main/docs/examples/creative_9x16.jpg?raw=true) | ![1:1 creative](https://github.com/raffael3d2/CampaignAI/blob/main/docs/examples/creative_1x1.jpg?raw=true) |
+| ![16:9 creative](https://github.com/raffael3d2/CampaignAI/blob/main/creative-automation-pipeline/images/creative_16x9.jpg?raw=true) | ![9:16 creative](https://github.com/raffael3d2/CampaignAI/blob/main/creative-automation-pipeline/images/creative_9x16.jpg?raw=true) | ![1:1 creative](https://github.com/raffael3d2/CampaignAI/blob/main/creative-automation-pipeline/images/creative_1x1.jpg?raw=true) |
 | Feed / YouTube / display | Stories / Reels / TikTok | Instagram / general feed |
 
 Notice how the same model, the same "One Wonder" product, the campaign message
