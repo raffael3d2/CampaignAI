@@ -14,6 +14,29 @@ Built for the FDE take-home: *Creative Automation for Scalable Social Ad Campaig
 
 ---
 
+## Example output — one campaign, every format
+
+From a single campaign brief plus a person, product, and logo, **Campaign AI
+generates the ad natively at multiple output resolutions** — one master square
+and matching vertical and widescreen versions. Crucially, it does **not** crop a
+single image into these shapes (which would slice off the model or the logo).
+Instead it generates the **1:1** master first, then re-composes the **9:16** and
+**16:9** versions with Nano Banana — extending the scene so the person, product,
+and logo stay fully in frame at every size.
+
+| 16:9 — widescreen (1920×1080) | 9:16 — vertical (1080×1920) | 1:1 — square (1080×1080) |
+|:---:|:---:|:---:|
+| ![16:9 creative](docs/examples/creative_16x9.jpg) | ![9:16 creative](docs/examples/creative_9x16.jpg) | ![1:1 creative](docs/examples/creative_1x1.jpg) |
+| Feed / YouTube / display | Stories / Reels / TikTok | Instagram / general feed |
+
+Notice how the same model, the same "One Wonder" product, the campaign message
+(*"glowing hair"*), and the brand logo appear correctly placed in each format —
+the vertical version reframes to a full-length shot and the widescreen version
+opens up the scene, rather than cropping the square. That's the multi-resolution
+generation described in [section 7](#7-how-image-generation-works-nano-banana).
+
+---
+
 ## Table of contents
 
 1. [What it does](#1-what-it-does)
